@@ -79,7 +79,7 @@ function Sprite(scene, imageFile, width, height){
 	//else{ ctx.translate(this.x, this.y); }
       
       //transform element
-      ctx.translate(this.x, this.y);
+      ctx.translate(this.x - camera.x, this.y - camera.y);
       ctx.rotate(this.imgAngle);
       
       //draw image with center on origin
@@ -455,6 +455,16 @@ function Sprite(scene, imageFile, width, height){
 		   + ", angle: " + this.moveAngle);
   } // end report
 } // end Sprite class def
+
+function Camera(scene, parent){
+	this.x = parent.x;
+	this.y = parent.y;
+	
+	this.update = function(){
+		this.x = parent.x;
+		this.y = parent.y;
+	}
+}
 
 function Scene(){
     //Scene that encapsulates the animation background

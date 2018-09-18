@@ -31,14 +31,27 @@ function Bullet(positionX, positionY, angle, velocity){
 		}
 	}
 }
-    
+  
+function FreeCamera(){
+	this.x = 0;
+	this.y = 0;
+	
+	this.update = function(){
+		
+	}
+}
+  
 function init(){
 	scene = new Scene();
 	ball = new Sprite(scene, "redBall.png", 50, 50);
+	ball.setBoundAction(CONTINUE);
 	ball.setPosition(scene.width/2, scene.height/2); //put ball in middle of screen
     ball.setMoveAngle(180);
 	ball.setSpeed(ballSpeed);
 	
+	//Free cam for debugging. Send player as paramater normally.
+	camParent = new FreeCamera();
+	camera = new Camera(scene, camParent);
 	scene.start();
 } // end init
 
@@ -67,12 +80,31 @@ function input(){
 	if(keysDown[K_RIGHT] == true){
 		ball.turnBy(rotateSpeed);
 	}
+	
+	//Move camera with WASD
+	if(keysDown[K_W] == true){
+		camParent.y = camParent.y - 1;
+	}
+	if(keysDown[K_S] == true){
+		camParent.y = camParent.y + 1;
+	}
+	if(keysDown[K_A] == true){
+		camParent.x = camParent.x - 1;
+	}
+	if(keysDown[K_D] == true){
+		camParent.x = camParent.x + 1;
+	}
 }
 
 	
 function update(){
 	input();
     scene.clear();
+	camera.update();
+	//ball camera
+	//ball.x = (scene.width/2) - camera.x;
+	//ball.y = (scene.height/2) - camera.y;
+	//end ball camera
     ball.update();
 	for(i = 0; i < bullet.length; i++){
 		//remove from array if it has "died".
