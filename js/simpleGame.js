@@ -79,7 +79,8 @@ function Sprite(scene, imageFile, width, height){
 	//else{ ctx.translate(this.x, this.y); }
       
       //transform element
-      ctx.translate(this.x - camera.x, this.y - camera.y);
+	  //Alex: transform sprite based on camera position.
+      ctx.translate(this.x - this.scene.camera.x, this.y - this.scene.camera.y);
       ctx.rotate(this.imgAngle);
       
       //draw image with center on origin
@@ -112,12 +113,14 @@ function Sprite(scene, imageFile, width, height){
   this.checkBounds = function(){
     //behavior changes based on
     //boundAction property
-    
-    camX = 0;
-    camY = 0;
-    if(this.camera){ camX = this.camera.cameraOffsetX; camY = this.camera.cameraOffsetY; }
+
+	//This only works if player's coordinates are positive. Alex
+    camX = this.scene.camera.x;
+    camY = this.scene.camera.y;
+	//console.log(camX, camY);
+    //if(this.camera){ camX = this.camera.cameraOffsetX; camY = this.camera.cameraOffsetY; }
     rightBorder = this.cWidth + camX;
-    leftBorder = camX;
+    leftBorder = camX; 
     topBorder = camY;
     bottomBorder = this.cHeight + camY;
     
@@ -456,10 +459,27 @@ function Sprite(scene, imageFile, width, height){
   } // end report
 } // end Sprite class def
 
-function Camera(scene, parent){
+//Used for parenting to sprite.
+function Camera(scene, parent, offsetX, offsetY){
+	this.offsetX = offsetX;
+	this.offsetY = offsetY;
 	this.x = parent.x;
 	this.y = parent.y;
 	
+	scene.setCamera(this);
+	
+	this.update = function(){
+		this.x = parent.x - this.offsetX;
+		this.y = parent.y - this.offsetY;
+	}
+}
+
+//Used for FreeCam. Alex.
+function FreeCamera(scene, parent){
+	this.x = parent.x;
+	this.y = parent.y;
+	scene.setCamera(this);
+	console.log("CAMERA CREATED");
 	this.update = function(){
 		this.x = parent.x;
 		this.y = parent.y;
@@ -491,7 +511,7 @@ function Scene(){
 	document.onkeydown = this.updateKeys;
 	document.onkeyup = this.clearKeys;
       //} // end if
-      this.intID = setInterval(localUpdate, 6);
+      this.intID = setInterval(localUpdate, 6); //changed to 6 for target 60 fps.
       document.onmousemove = this.updateMousePos;
       document.mouseClicked = false;
       document.onmousedown = function(){
@@ -503,7 +523,12 @@ function Scene(){
 	this.mouseClicked  = false;
       }
     } 
-
+	
+	//Called when camera is created so the scene has camera.
+	this.setCamera = function(cam){
+		this.camera = cam;
+	}
+	
     this.stop = function(){
       clearInterval(this.intID);
     }
