@@ -497,10 +497,24 @@ function Scene(){
     this.canvas.style.backgroundColor = "yellow";
     document.body.appendChild(this.canvas);
     this.context = this.canvas.getContext("2d");
-    
+	
+	//Alex Edit for text drawing
+	this.context.font = "30px Arial";
+	
     this.clear = function(){
       this.context.clearRect(0, 0, this.width, this.height);
     }
+	
+	//Destroy scene for restarting the game
+	this.destroy = function(){
+		//document.body.removeChild(this.canvas);
+		while(document.body.hasChildNodes()){
+			document.body.removeChild(document.body.lastChild);
+		}
+		//document.body = document.createElement("body");
+		//document.appendChild(document.createElement("body"));
+		//document.body = document.createElement("body");
+	}
 
     this.start = function(){
       //set up keyboard reader if not a touch screen.
@@ -511,7 +525,7 @@ function Scene(){
 	document.onkeydown = this.updateKeys;
 	document.onkeyup = this.clearKeys;
       //} // end if
-      this.intID = setInterval(localUpdate, 6); //changed to 6 for target 60 fps.
+      this.intID = setInterval(localUpdate, 6); //changed to 6 for target 60 fps because anything below looks choppy to my superior eyes.
       document.onmousemove = this.updateMousePos;
       document.mouseClicked = false;
       document.onmousedown = function(){
@@ -524,7 +538,16 @@ function Scene(){
       }
     } 
 	
-	//Called when camera is created so the scene has camera.
+	//Alex function using canvas to draw text.
+	this.drawText = function(){
+			this.context.fillText("Hello World",10,50); 
+	}
+	
+	this.sDrawText = function(string){
+			this.context.fillText(string,10,70);
+	}
+	
+	//Called when camera is created so the scene has camera. Alex Edit
 	this.setCamera = function(cam){
 		this.camera = cam;
 	}
