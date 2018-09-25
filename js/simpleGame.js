@@ -486,6 +486,14 @@ function FreeCamera(scene, parent){
 	}
 }
 
+function Text(string, x, y, font, type){
+	this.string = string;
+	this.x = x;
+	this.y = y;
+	this.font = font;
+	this.type = type;
+}
+
 function Scene(){
     //Scene that encapsulates the animation background
 
@@ -500,21 +508,11 @@ function Scene(){
 	
 	//Alex Edit for text drawing
 	this.context.font = "30px Arial";
+	this.textArray = [];
 	
     this.clear = function(){
       this.context.clearRect(0, 0, this.width, this.height);
     }
-	
-	//Destroy scene for restarting the game
-	this.destroy = function(){
-		//document.body.removeChild(this.canvas);
-		while(document.body.hasChildNodes()){
-			document.body.removeChild(document.body.lastChild);
-		}
-		//document.body = document.createElement("body");
-		//document.appendChild(document.createElement("body"));
-		//document.body = document.createElement("body");
-	}
 
     this.start = function(){
       //set up keyboard reader if not a touch screen.
@@ -540,11 +538,34 @@ function Scene(){
 	
 	//Alex function using canvas to draw text.
 	this.drawText = function(){
-			this.context.fillText("Hello World",10,50); 
+		for(i = 0; i < this.textArray.length; i++){
+			this.context.font = this.textArray[i].font;
+			this.context.fillText(this.textArray[i].string, this.textArray[i].x, this.textArray[i].y);
+			if(this.textArray[i].type == DEFAULT){
+					this.textArray.splice(i, 1);
+			}
+		}
 	}
 	
-	this.sDrawText = function(string){
-			this.context.fillText(string,10,70);
+	this.clearText = function(){
+		this.textArray = [];
+	}
+	
+	this.sSetText = function(string, x, y, type){
+		//Remove whatever other "default" type text is in the array first.
+		if(type == DEFAULT){
+			/*
+			for(i = 0; i < this.textArray.length; i++){
+				if(this.textArray[i].type == DEFAULT){
+					this.textArray.splice(i, 1);
+				}
+			}*/
+			this.textArray.push(new Text(string, x, y,"20px Arial", type));
+		}
+		//Will be cleared when scene is reset.
+		else if(type == GAMEOVER){
+			this.textArray.push(new Text(string, x, y,"40px Arial", type));			
+		}
 	}
 	
 	//Called when camera is created so the scene has camera. Alex Edit
@@ -1080,3 +1101,6 @@ PLAY_ONCE = 1; PLAY_LOOP = 2;
 
 //Boundary action constants
 WRAP = 0; BOUNCE = 1; STOP = 3; DIE = 4; CONTINUE = 5;
+
+//Text Position Constants
+DEFAULT = 0; GAMEOVER = 1;

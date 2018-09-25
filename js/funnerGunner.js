@@ -84,6 +84,7 @@ function Enemy (positionX, positionY){
 		if(this.hitPoints <= 0){
 			this.dead = true;
 		}
+		scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
 	}
 	
 	this.damageBy = function(amount){
@@ -149,7 +150,8 @@ function HUD(player, scene){
 	this.player = player;
 	
 	this.update = function(){
-		scene.sDrawText(this.player.hitPoints);
+		scene.sSetText(this.player.hitPoints, DEFAULT);
+		//scene.drawText();
 	}
 }
   
@@ -159,6 +161,9 @@ function init(){
 	if(firstRun == true){
 		scene = new Scene();
 	}
+	
+	scene.clearText();
+	
 	player = new Sprite(scene, "redBall.png", 50, 50);
 	player.setBoundAction(CONTINUE);
 	player.setPosition(1,1); //put player in middle of screen
@@ -188,6 +193,12 @@ function init(){
 function reset(){
 	firstRun = false;
 	init();
+}
+
+function setGameOver(win){
+	gameOver = true;
+	
+	scene.sSetText("Game Over.\nPress Fire To Restart.", 100, 400, GAMEOVER);
 }
 
 function fire(){
@@ -267,14 +278,14 @@ function update(){
 	input();
 	aiController.update();
     scene.clear();
-	if(gameOver == false){			
+	if(gameOver == false){		
 		camera.update();
 		player.update();
 		for(i = 0; i < enemy.length; i++){
 			if(enemy[i].dead == true){
 				enemy.splice(i, 1);
 				if(enemy.length == 0){
-					gameOver = true;
+					setGameOver(true);
 				}
 			}
 			else{
@@ -294,14 +305,11 @@ function update(){
 						bullet[i].dead = true;
 						enemy[j].damageBy(bullet[i].damage);
 						console.log("hit!");
-						scene.sDrawText("hit!");
+						scene.sSetText("hit!", 10, 70, DEFAULT);
 					}
 				}
 			}
 		}
-	}
-	else{
-		scene.sDrawText("Game Over!");
 	}
 	hud.update();
 	scene.drawText();
