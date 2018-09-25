@@ -7,6 +7,7 @@
 var firstRun = true;
 var gameOver = false;
 
+var debugcount = 0;
 var scene;
 var player;
 var camera;
@@ -15,6 +16,8 @@ var bullet = [];
 var enemy = [];
 var maxBullets = 10;
 var currentBullets = 0;
+var score = 0;
+var highScore = 0;
 var fired = false; //check if fired this frame.
 
 var rotateSpeed = 1;
@@ -54,6 +57,22 @@ function Bullet(positionX, positionY, angle, velocity, friendly){
 function Player (){
 	this.x = scene.width/2;
 	this.y = scene.height/2;
+	
+	this.sprite = new Sprite(scene, "redBall.png", 50, 50);
+	this.sprite.setBoundAction(CONTINUE);
+	this.sprite.setPosition(1,1); //put player in middle of screen
+	this.sprite.setMoveAngle(180);
+	this.sprite.setSpeed(0);
+	
+	this.hitPoints = 1;
+	
+	this.update = function(){
+		this.sprite.update();
+	}
+	
+	this.damageBy = function(amount){
+		this.hitPoints -= amount;		
+	}
 }
 
 function Enemy (positionX, positionY){
@@ -65,6 +84,8 @@ function Enemy (positionX, positionY){
 	this.aggro = true;
 	this.knockedBack = false; this.knockedBackXenith = false;
 	this.knockBackForce = 0;
+	this.pointValueDead = 200;
+	this.pointValueHit = 50;
 	
 	this.sprite = new Sprite(scene, "redBall.png", 80, 80);
 	this.sprite.setBoundAction(CONTINUE);
@@ -82,6 +103,7 @@ function Enemy (positionX, positionY){
 		}
 		this.sprite.update();
 		if(this.hitPoints <= 0){
+			score += this.pointValueDead;
 			this.dead = true;
 		}
 		scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
@@ -94,6 +116,8 @@ function Enemy (positionX, positionY){
 				this.setAggro(true)
 			}
 		}
+		
+		score += this.pointValueHit;
 		
 		this.knockBack(20);
 	}
@@ -132,7 +156,7 @@ function Enemy (positionX, positionY){
 	}
 	
 	this.chase = function(player){
-		this.sprite.setAngle(this.sprite.angleTo(player));
+		this.sprite.setAngle(this.sprite.angleTo(player.sprite));
 	}
 }	
 
@@ -150,13 +174,14 @@ function HUD(player, scene){
 	this.player = player;
 	
 	this.update = function(){
-		scene.sSetText(this.player.hitPoints, DEFAULT);
-		//scene.drawText();
+		//scene.sSetText(this.player.hitPoints, DEFAULT, 10, 30);
+		scene.sSetText("SCORE: " + score, 100, 30, SCORE);
 	}
 }
   
 function init(){
 	gameOver = false;
+	score = 0;
 	console.log("Creating new game...");
 	if(firstRun == true){
 		scene = new Scene();
@@ -164,11 +189,7 @@ function init(){
 	
 	scene.clearText();
 	
-	player = new Sprite(scene, "redBall.png", 50, 50);
-	player.setBoundAction(CONTINUE);
-	player.setPosition(1,1); //put player in middle of screen
-	player.setMoveAngle(180);
-	player.setSpeed(0);
+	player = new Player();
 		
 	enemy = [];
 	enemy.push(new Enemy(400, 500));
@@ -179,8 +200,8 @@ function init(){
 	//camParent = new FreeCamera();
 	//camera = new FreeCamera(scene, camParent);
 
-	camera = new Camera(scene, player, scene.width/2, scene.height/2);
-	hud = new HUD(enemy[0], scene);
+	camera = new Camera(scene, player.sprite, scene.width/2, scene.height/2);
+	hud = new HUD(player, scene);
 	
 	aiController = new AiController(player);
 	
@@ -195,16 +216,33 @@ function reset(){
 	init();
 }
 
-function setGameOver(win){
+function setGameOver(condition){
+	debugcount++;
+	console.log(debugcount);
 	gameOver = true;
 	
-	scene.sSetText("Game Over.\nPress Fire To Restart.", 100, 400, GAMEOVER);
+	if(condition == WIN){
+		scene.sSetText("You Win!", 100, 300, GAMEOVER);
+	}
+	else if(condition == LOSE){
+		scene.sSetText("You Lose", 100, 300, GAMEOVER);
+	}
+	
+	scene.sSetText("Press Fire To Restart", 100, 400, GAMEOVER);
+	
+	if(score > highScore){
+		highScore = score;
+		scene.sSetText("New High Score!", 100, 500, GAMEOVER);
+	}
+	else{
+		scene.sSetText("High Score: " + highScore, 100, 500, GAMEOVER);
+	}
 }
 
 function fire(){
 	if(gameOver == false){
 		if(currentBullets < maxBullets){		
-			bullet.push(new Bullet(player.x, player.y, player.getMoveAngle(), bulletSpeed, true));
+			bullet.push(new Bullet(player.sprite.x, player.sprite.y, player.sprite.getMoveAngle(), bulletSpeed, true));
 			//console.log(bullet); //debug
 			currentBullets++;
 		}
@@ -226,10 +264,10 @@ function input(){
 	
 	//Left and Right keys for rotating
 	if(keysDown[K_LEFT] == true){
-		player.turnBy(rotateSpeed * -1);
+		player.sprite.turnBy(rotateSpeed * -1);
 	}
 	if(keysDown[K_RIGHT] == true){
-		player.turnBy(rotateSpeed);
+		player.sprite.turnBy(rotateSpeed);
 	}
 	
 	/*
@@ -248,28 +286,28 @@ function input(){
 	}
 	*/
 	
-	this.oldPlayerX = player.x;
-	this.oldPlayerY = player.y;
+	this.oldPlayerX = player.sprite.x;
+	this.oldPlayerY = player.sprite.y;
 	
 		//Move player with WASD
 	if(keysDown[K_W] == true){
-		player.y = player.y - playerSpeed;
+		player.sprite.y = player.sprite.y - playerSpeed;
 	}
 	if(keysDown[K_S] == true){
-		player.y = player.y + playerSpeed;
+		player.sprite.y = player.sprite.y + playerSpeed;
 	}
 	if(keysDown[K_A] == true){
-		player.x = player.x - playerSpeed;
+		player.sprite.x = player.sprite.x - playerSpeed;
 	}
 	if(keysDown[K_D] == true){
-		player.x = player.x + playerSpeed;
+		player.sprite.x = player.sprite.x + playerSpeed;
 	}
 	
-	if(player.x <= 0){
-		player.x = this.oldPlayerX;
+	if(player.sprite.x <= 0){
+		player.sprite.x = this.oldPlayerX;
 	}
-	if(player.y <= 0){
-		player.y = this.oldPlayerY;
+	if(player.sprite.y <= 0){
+		player.sprite.y = this.oldPlayerY;
 	}
 }
 
@@ -285,11 +323,16 @@ function update(){
 			if(enemy[i].dead == true){
 				enemy.splice(i, 1);
 				if(enemy.length == 0){
-					setGameOver(true);
+					setGameOver(WIN);
 				}
 			}
 			else{
 				enemy[i].update();
+				for(j = 0; j < enemy.length; j++){
+					if(player.sprite.collidesWith(enemy[j].sprite) == true){
+						player.damageBy(1);
+					}
+				}
 			}
 		}
 		for(i = 0; i < bullet.length; i++){
@@ -310,7 +353,12 @@ function update(){
 				}
 			}
 		}
+		if(player.hitPoints <= 0){
+			setGameOver(LOSE);
+		}
 	}
 	hud.update();
 	scene.drawText();
 } // end update
+
+WIN = 0; LOSE = 1

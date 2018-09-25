@@ -541,8 +541,9 @@ function Scene(){
 		for(i = 0; i < this.textArray.length; i++){
 			this.context.font = this.textArray[i].font;
 			this.context.fillText(this.textArray[i].string, this.textArray[i].x, this.textArray[i].y);
-			if(this.textArray[i].type == DEFAULT){
-					this.textArray.splice(i, 1);
+			//console.log(this.textArray[i].string);
+			if(this.textArray[i].type != GAMEOVER){
+				this.textArray.splice(i, 1);
 			}
 		}
 	}
@@ -554,14 +555,12 @@ function Scene(){
 	this.sSetText = function(string, x, y, type){
 		//Remove whatever other "default" type text is in the array first.
 		if(type == DEFAULT){
-			/*
-			for(i = 0; i < this.textArray.length; i++){
-				if(this.textArray[i].type == DEFAULT){
-					this.textArray.splice(i, 1);
-				}
-			}*/
 			this.textArray.push(new Text(string, x, y,"20px Arial", type));
 		}
+		else if(type == SCORE){
+			this.textArray.push(new Text(string, x, y,"25px Arial", type));
+		}
+		
 		//Will be cleared when scene is reset.
 		else if(type == GAMEOVER){
 			this.textArray.push(new Text(string, x, y,"40px Arial", type));			
@@ -1103,4 +1102,4 @@ PLAY_ONCE = 1; PLAY_LOOP = 2;
 WRAP = 0; BOUNCE = 1; STOP = 3; DIE = 4; CONTINUE = 5;
 
 //Text Position Constants
-DEFAULT = 0; GAMEOVER = 1;
+DEFAULT = 0; GAMEOVER = 1; SCORE = 2;
