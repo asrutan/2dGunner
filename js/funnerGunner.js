@@ -59,6 +59,7 @@ function World(height, width){
 	}
 }
 
+//Unused. Replaced with orb, which is more fun.
 function Bullet(positionX, positionY, angle, velocity, friendly){
 	this.sprite = new Sprite(scene,"orb.png",20,20)
 	this.sprite.loadAnimation(204,46,34,34);
@@ -73,6 +74,32 @@ function Bullet(positionX, positionY, angle, velocity, friendly){
 	this.dead = false;
 	
 	this.update = function(){
+		this.sprite.update();
+		if(this.sprite.visible == false){
+			this.dead = true;
+		}
+	}
+}
+
+function Orb(parent){
+	this.parent = parent;
+	this.sprite = new Sprite(scene,"orb.png",20,20)
+	this.sprite.loadAnimation(204,46,34,34);
+	this.sprite.generateAnimationCycles();
+	this.sprite.setAnimationSpeed(500);
+	this.sprite.setBoundAction(DIE);
+	//this.sprite.setMoveAngle(angle);
+	//this.sprite.setSpeed(velocity);		
+	
+	this.radius = 50;
+	this.damage = 1;
+	this.dead = false;
+	this.sprite.setPosition(this.parent.x + this.radius, this.parent.y);
+	
+	this.update = function(){
+		//this.sprite.x = this.parent.x + this.radius;
+		//this.sprite.y = this.parent.y;
+		this.sprite.setPosition(this.parent.x + this.radius, this.parent.y);
 		this.sprite.update();
 		if(this.sprite.visible == false){
 			this.dead = true;
@@ -108,11 +135,20 @@ function Enemy (positionX, positionY){
 	this.speedModifier = 0;
 	this.dead = false;
 	this.aggro = true;
+	this.invincible = false;
 	this.knockedBack = false; this.knockedBackXenith = false;
+
 	this.knockBackForce = 0;
 	this.pointValueDead = 200;
 	this.pointValueHit = 50;
+	this.impactWait = 20;
 	
+	//for hitstop wait effect.
+	this.damageHold = 0;
+	this.startWait = 0;
+	this.waitTime = 0;
+	this.waiting = false;
+
 	this.sprite = new Sprite(scene, "redBall.png", 80, 80);
 	this.sprite.setBoundAction(CONTINUE);
 	this.sprite.setPosition(positionX,positionY); //put player in middle of screen
@@ -123,29 +159,71 @@ function Enemy (positionX, positionY){
 	}
 	
 	this.update = function(){
-		if(this.knockedBack == true){
-			this.performKnockBack();
-			this.sprite.setSpeed(this.speed + this.speedModifier);
+		if(this.waiting == false){	
+			if(this.knockedBack == true){
+				this.performKnockBack();
+				this.sprite.setSpeed(this.speed + this.speedModifier);
+			}
+			if(this.invincible == true){
+				this.invincibility(false); //count down invincibility. bool is whether to start the clock or not.
+			}
+			this.sprite.update();
+			if(this.hitPoints <= 0){
+				score += this.pointValueDead;
+				this.dead = true;
+			}
+			scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
 		}
-		this.sprite.update();
-		if(this.hitPoints <= 0){
-			score += this.pointValueDead;
-			this.dead = true;
-		}
-		scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
-	}
-	
-	this.damageBy = function(amount){
-		this.hitPoints -= amount;
-		if(this.aggro == false){		
-			if(amount >= this.damageAggroThreshold){
-				this.setAggro(true)
+		else{
+			this.sprite.setSpeed(0);
+			this.sprite.update();
+			if(timer.getCurrentTime() - this.startWait >= this.waitTime){
+				this.waiting = false;
+				this.damageBy(this.damageHold, false);
+				//console.log("done waiting.");
 			}
 		}
+	}
+	
+	this.invincibility = function(set){
+		if(set == true){
+			this.invincible = true;
+			iFrames = 30;
+		}
+		iFrames--;
+		if(iFrames <= 0){
+			this.invincible = false;
+		}
+	}
+	
+	//Wait, then damage after waiting
+	this.setWait = function(time, damage){
+		this.damageHold = damage;
+		this.waiting = true;
+		this.waitTime = time;
+		this.startWait = timer.getCurrentTime();
+		//console.log("waiting...");
+	}
+	
+	//Amount of damage to do, and whether or not to perform wait effect for hitstop.
+	this.damageBy = function(amount, waitBool){
+		if(this.invincible == false){	
+			if(waitBool == true){
+				this.setWait(100, amount);
+			}
+			this.hitPoints -= amount;
+			if(this.aggro == false){		
+				if(amount >= this.damageAggroThreshold){
+					this.setAggro(true)
+				}
+			}
 		
-		score += this.pointValueHit;
+			this.invincibility(true);
 		
-		this.knockBack(20);
+			score += this.pointValueHit;
+		
+			this.knockBack(20);
+		}
 	}
 	
 	this.knockBack = function(force){
@@ -183,7 +261,9 @@ function Enemy (positionX, positionY){
 	}
 	
 	this.chase = function(player){
-		this.sprite.setAngle(this.sprite.angleTo(player.sprite));
+		if(this.waiting == false){
+			this.sprite.setAngle(this.sprite.angleTo(player.sprite));
+		}
 	}
 }	
 
@@ -266,6 +346,8 @@ function init(){
 	enemy[1].setAggro(false);
 
 	pickup = new Pickup();
+	
+	orb = new Orb(player.sprite);
 	
 	//Free cam for debugging. Send player as paramater normally.
 	//camParent = new FreeCamera();
@@ -403,12 +485,15 @@ function update(){
 				else{
 					enemy[i].update();
 					for(j = 0; j < enemy.length; j++){
-						if(player.sprite.collidesWith(enemy[j].sprite) == true){
-							player.damageBy(1);
+						if(enemy[j].waiting == false){	 //if enemy is in hitstop effect, it can't damage the player.
+							if(player.sprite.collidesWith(enemy[j].sprite) == true){
+								player.damageBy(1);
+							}
 						}
 					}
 				}
 			}
+			orb.update();
 			for(i = 0; i < bullet.length; i++){
 				//remove from array if it has "died".
 				if(bullet[i].dead == true){
@@ -418,9 +503,10 @@ function update(){
 				else{
 					bullet[i].update();
 					for(j = 0; j < enemy.length; j++){
+						console.log(i);
 						if(bullet[i].sprite.collidesWith(enemy[j].sprite) == true){
 							bullet[i].dead = true;
-							enemy[j].damageBy(bullet[i].damage);
+							enemy[j].damageBy(bullet[i].damage, true);
 						}
 					}
 				}
