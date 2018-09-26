@@ -60,7 +60,10 @@ function World(height, width){
 }
 
 function Bullet(positionX, positionY, angle, velocity, friendly){
-	this.sprite = new Sprite(scene,"redBall.png",20,20)
+	this.sprite = new Sprite(scene,"orb.png",20,20)
+	this.sprite.loadAnimation(204,46,34,34);
+	this.sprite.generateAnimationCycles();
+	this.sprite.setAnimationSpeed(500);
 	this.sprite.setBoundAction(DIE);
 	this.sprite.setPosition(positionX, positionY);
 	this.sprite.setMoveAngle(angle);
@@ -81,7 +84,7 @@ function Player (){
 	this.x = scene.width/2;
 	this.y = scene.height/2;
 	
-	this.sprite = new Sprite(scene, "redBall.png", 50, 50);
+	this.sprite = new Sprite(scene, "warlock.png", 50, 50);
 	this.sprite.setBoundAction(CONTINUE);
 	this.sprite.setPosition(1,1); //put player in middle of screen
 	this.sprite.setMoveAngle(180);
