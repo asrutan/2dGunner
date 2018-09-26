@@ -459,6 +459,158 @@ function Sprite(scene, imageFile, width, height){
   } // end report
 } // end Sprite class def
 
+//Stripped down sprite class used for background tiling.
+function Tile(scene, imageFile, x, y){
+	    //core class for game engine
+  this.scene = scene;
+  this.canvas = scene.canvas;
+  this.context = this.canvas.getContext("2d");
+  this.image = new Image();
+  this.image.src = imageFile;
+  this.animation = false; // becomes Animation Class
+  this.width = 100;
+  this.height = 100;
+  this.cHeight = parseInt(this.canvas.height);
+  this.cWidth = parseInt(this.canvas.width);
+  this.x = x;
+  this.y = y;
+  this.imgAngle = 0;
+  this.visible = true;
+  this.boundAction = CONTINUE;
+  
+  this.changeImage = function(imgFile){
+    this.image.src = imgFile;
+  } // end this.changeImage
+  
+  this.setImage = function(imgFile){
+    //set and change image are the same thing.
+    this.image.src = imgFile;
+  } // end this.setImage
+  
+  this.hide = function(){this.visible = false; }
+  this.show = function(){this.visible = true; }
+
+  this.draw = function(){
+    //draw self on canvas;
+    //intended only to be called from update, should never
+    //need to be deliberately called by user
+    ctx = this.context;
+
+    ctx.save();
+	//The following lines are for Tyler's code. Removed for now
+	//if( this.camera ){ ctx.translate(this.x - this.camera.cameraOffsetX, this.y - this.camera.cameraOffsetY); }
+	//else{ ctx.translate(this.x, this.y); }
+      
+      //transform element
+	  //Alex: transform sprite based on camera position.
+      ctx.translate(this.x - this.scene.camera.x, this.y - this.scene.camera.y);
+      ctx.rotate(this.imgAngle);
+      
+      //draw image with center on origin
+	if( this.animation != false ){
+          this.animation.drawFrame(ctx);
+	}
+	else{
+	  ctx.drawImage(this.image, 
+           0 - (this.width / 2), 
+           0 - (this.height / 2),
+           this.width, this.height);
+	}
+    ctx.restore();
+     
+  } // end draw function
+
+  this.update = function(){
+    this.checkBounds();
+    if (this.visible){
+      this.draw();
+    } // end if
+  } // end update
+  
+    this.setBoundAction = function(action){
+    this.boundAction = action;
+  } // end setBoundAction
+  
+  this.checkBounds = function(){
+    //behavior changes based on
+    //boundAction property
+
+	//This only works if player's coordinates are positive. Alex
+    camX = this.scene.camera.x;
+    camY = this.scene.camera.y;
+	//console.log(camX, camY);
+    //if(this.camera){ camX = this.camera.cameraOffsetX; camY = this.camera.cameraOffsetY; }
+    rightBorder = this.cWidth + camX;
+    leftBorder = camX; 
+    topBorder = camY;
+    bottomBorder = this.cHeight + camY;
+    
+    offRight = false;
+    offLeft = false;
+    offTop = false;
+    offBottom = false;
+    
+    if (this.x > rightBorder){
+      offRight = true;
+    }
+    
+    if (this.x < leftBorder){
+      offLeft = true;
+    }
+    
+    if (this.y > bottomBorder){
+      offBottom = true;
+    }
+    
+    if (this.y < 0){
+      offTop = true;
+    }
+
+    if (this.boundAction == WRAP){
+      if (offRight){
+	this.x = leftBorder;
+      } // end if
+  
+      if (offBottom){
+	this.y = topBorder;
+      } // end if
+  
+      if (offLeft){
+	this.x = rightBorder;
+      } // end if
+  
+      if (offTop){
+	this.y = bottomBorder;
+      }
+    } else if (this.boundAction == BOUNCE){
+      if (offTop || offBottom){
+	this.dy *= -1;
+	this.calcSpeedAngle();
+	this.imgAngle = this.moveAngle;
+      }
+      
+      if (offLeft || offRight){
+	this.dx *= -1;
+	this.calcSpeedAngle();
+	this.imgAngle = this.moveAngle;
+      }
+      
+    } else if (this.boundAction == STOP){
+      if (offLeft || offRight || offTop || offBottom){
+	this.setSpeed(0);
+      }
+    } else if (this.boundAction == DIE){
+      if (offLeft || offRight || offTop || offBottom){
+        this.hide();
+	this.setSpeed(0);
+      }
+      
+    } else {
+      //keep on going forever
+    }
+  } // end checkbounds
+}
+
 //Used for parenting to sprite.
 function Camera(scene, parent, offsetX, offsetY){
 	this.offsetX = offsetX;

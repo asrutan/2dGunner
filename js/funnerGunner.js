@@ -7,9 +7,14 @@
 var firstRun = true;
 var gameOver = false;
 
-var debugcount = 0;
+var timer;
+var waiter;
+
 var scene;
 var player;
+
+var pickup;
+
 var camera;
 var hud;
 var bullet = [];
@@ -32,6 +37,24 @@ function AiController(player){
 			if(enemy[i].aggro == true){
 				enemy[i].chase(this.target);
 			}
+		}
+	}
+}
+
+function World(height, width){
+	this.tiles = [];
+	
+	this.initialize = function(){
+		for(i = 0; i <= height; i++){
+			for(j = 0; j <= width; j++){
+				this.tiles.push(new Tile(scene, "ground.png", i*100, j*100));
+			}
+		}
+	}
+	
+	this.update = function(){
+		for(i = 0; i < this.tiles.length; i++){
+			this.tiles[i].update();
 		}
 	}
 }
@@ -151,6 +174,7 @@ function Enemy (positionX, positionY){
 			this.sprite.setSpeed(0);
 		}
 		else{
+			//waiting = true;
 			this.sprite.setSpeed(this.speed);
 		}
 	}
@@ -159,6 +183,21 @@ function Enemy (positionX, positionY){
 		this.sprite.setAngle(this.sprite.angleTo(player.sprite));
 	}
 }	
+
+function Pickup (){
+	this.sprite = new Sprite(scene, "challice.png", 30, 30);
+	this.sprite.setBoundAction(CONTINUE);
+	this.sprite.setPosition(500,10);
+	this.sprite.setMoveAngle(0);
+	this.sprite.setSpeed(0);
+	
+	this.dead = false;
+	this.pointValue = 200;
+	
+	this.update = function(){
+		this.sprite.update();
+	}
+}
 
 function FreeCamera(){
 	this.x = 0;
@@ -178,6 +217,26 @@ function HUD(player, scene){
 		scene.sSetText("SCORE: " + score, 100, 30, SCORE);
 	}
 }
+
+function Waiter(){
+	this.startWait = 0;
+	this.waitTime = 0;
+	this.waiting = false;
+	
+	this.setWait = function(time){
+		this.waiting = true;
+		this.waitTime = time;
+		this.startWait = timer.getCurrentTime();
+		console.log("waiting...");
+	}
+	
+	this.update = function(){
+		if(timer.getCurrentTime() - this.startWait >= this.waitTime){
+			this.waiting = false;
+			console.log("done waiting.");
+		}
+	}
+}
   
 function init(){
 	gameOver = false;
@@ -185,17 +244,26 @@ function init(){
 	console.log("Creating new game...");
 	if(firstRun == true){
 		scene = new Scene();
+		timer = new Timer();
 	}
 	
+	timer.reset();
 	scene.clearText();
 	
+	waiter = new Waiter();
 	player = new Player();
-		
+	
+	world = new World(20, 20);
+	world.initialize();
+	
+	bullet = [];
 	enemy = [];
 	enemy.push(new Enemy(400, 500));
 	enemy.push(new Enemy(100, 200));
 	enemy[1].setAggro(false);
-		
+
+	pickup = new Pickup();
+	
 	//Free cam for debugging. Send player as paramater normally.
 	//camParent = new FreeCamera();
 	//camera = new FreeCamera(scene, camParent);
@@ -217,10 +285,8 @@ function reset(){
 }
 
 function setGameOver(condition){
-	debugcount++;
-	console.log(debugcount);
 	gameOver = true;
-	
+	waiter.setWait(2000); // wait for 2 seconds.
 	if(condition == WIN){
 		scene.sSetText("You Win!", 100, 300, GAMEOVER);
 	}
@@ -313,52 +379,70 @@ function input(){
 
 	
 function update(){
-	input();
-	aiController.update();
-    scene.clear();
-	if(gameOver == false){		
-		camera.update();
-		player.update();
-		for(i = 0; i < enemy.length; i++){
-			if(enemy[i].dead == true){
-				enemy.splice(i, 1);
-				if(enemy.length == 0){
-					setGameOver(WIN);
+	if(waiter.waiting == false){
+		input();
+		aiController.update();
+		scene.clear();
+		if(gameOver == false){	
+			camera.update();
+			
+			//World tiles go here
+			world.update();
+			
+			player.update();
+			for(i = 0; i < enemy.length; i++){
+				if(enemy[i].dead == true){
+					enemy.splice(i, 1);
+					if(enemy.length == 0){
+						setGameOver(WIN);
+					}
 				}
-			}
-			else{
-				enemy[i].update();
-				for(j = 0; j < enemy.length; j++){
-					if(player.sprite.collidesWith(enemy[j].sprite) == true){
-						player.damageBy(1);
+				else{
+					enemy[i].update();
+					for(j = 0; j < enemy.length; j++){
+						if(player.sprite.collidesWith(enemy[j].sprite) == true){
+							player.damageBy(1);
+						}
 					}
 				}
 			}
-		}
-		for(i = 0; i < bullet.length; i++){
-			//remove from array if it has "died".
-			if(bullet[i].dead == true){
-				bullet.splice(i, 1);
-				currentBullets--;
-			}
-			else{
-				bullet[i].update();
-				for(j = 0; j < enemy.length; j++){
-					if(bullet[i].sprite.collidesWith(enemy[j].sprite) == true){
-						bullet[i].dead = true;
-						enemy[j].damageBy(bullet[i].damage);
-						console.log("hit!");
-						scene.sSetText("hit!", 10, 70, DEFAULT);
+			for(i = 0; i < bullet.length; i++){
+				//remove from array if it has "died".
+				if(bullet[i].dead == true){
+					bullet.splice(i, 1);
+					currentBullets--;
+				}
+				else{
+					bullet[i].update();
+					for(j = 0; j < enemy.length; j++){
+						if(bullet[i].sprite.collidesWith(enemy[j].sprite) == true){
+							bullet[i].dead = true;
+							enemy[j].damageBy(bullet[i].damage);
+						}
 					}
 				}
 			}
+			if(pickup.dead == false){
+				pickup.update()
+				if(player.sprite.collidesWith(pickup.sprite)){
+					score += pickup.pointValue;
+					pickup.dead = true;
+				}
+			}
+
+			if(player.hitPoints <= 0){
+				setGameOver(LOSE);
+			}
 		}
-		if(player.hitPoints <= 0){
-			setGameOver(LOSE);
+		if(waiter.waiting == false){
+			hud.update();
+			scene.drawText();
 		}
 	}
-	hud.update();
-	scene.drawText();
+		
+	else{
+		waiter.update();
+	}
 } // end update
 
 WIN = 0; LOSE = 1
