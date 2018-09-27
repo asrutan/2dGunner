@@ -572,7 +572,7 @@ function init(){
 	scene.clearText();
 	
 	waiter = new Waiter();
-	
+	treasure = [];
 	world = new World(width, height);
 	world.initialize();
 	
