@@ -7,12 +7,15 @@
 var firstRun = true;
 var gameOver = false;
 var winner = false;
+var gotKey = false;
+var keySpawned = false;
 
 var timer;
 var waiter;
 var game;
 var scene;
 var player;
+var exit;
 
 var screenFilters = [];
 
@@ -64,7 +67,7 @@ function World(height, width){
 		while(keepGoing == true){			
 			for(i = 0; i <= height - 1; i++){
 				for(j = 0; j <= width - 1; j++){
-					if(Math.floor((Math.random() * 100) + 1) > 98){	
+					if(Math.floor((Math.random() * 100) + 1) > 99){	
 						this.playerPosX = i*100;
 						this.playerPosY = j*100;
 						player.sprite.setPosition(this.playerPosX , this.playerPosY);
@@ -74,14 +77,26 @@ function World(height, width){
 			}
 		}	
 		
+		keepGoing = true;
+		while(keepGoing == true){			
+			for(i = 0; i <= height - 1; i++){
+				for(j = 0; j <= width - 1; j++){
+					if(Math.floor((Math.random() * 100) + 1) > 99){	
+						exit = new Exit(i*100, j*100)
+						keepGoing = false;
+					}
+				}
+			}
+		}				
+		
 		for(i = 0; i <= height; i++){
 			for(j = 0; j <= width; j++){
 				this.tiles.push(new Tile(scene, "dirt2.png", i*100, j*100));
 				//spawn enemies.
 				if(enemy.length <= 10 + game.levelCount){
 					if(Math.floor((Math.random() * 100) + 1) > 98 && i*100 != this.playerPosX && j*100 != this.playerPosY){
-						console.log("Enemies: " + enemy.length);
-						console.log("Location:" + i*100 +", " + j*100);
+						//console.log("Enemies: " + enemy.length);
+						//console.log("Location:" + i*100 +", " + j*100);
 						enemy.push(new Enemy(i*100, j*100));
 						enemy[enemy.length - 1].setAggro(false);
 					}
@@ -93,8 +108,8 @@ function World(height, width){
 				for(j = 0; j <= width; j++){
 					if(enemy.length <= 10 + game.levelCount){
 						if(Math.floor((Math.random() * 100) + 1) > 98){	
-							console.log("Enemies: " + enemy.length);
-							console.log("Location:" + i*100 +", " + j*100);
+							//console.log("Enemies: " + enemy.length);
+							//console.log("Location:" + i*100 +", " + j*100);
 							enemy.push(new Enemy(i*100, j*100));
 						}	
 					}
@@ -107,7 +122,7 @@ function World(height, width){
 				for(j = 0; j <= width; j++){
 					if(treasure.length <= 10 * game.levelCount){
 						if(Math.floor((Math.random() * 100) + 1) > 98){	
-							treasure.push(new Treasure(i*100, j*100));
+							treasure.push(new Treasure(i*100, j*100, DEFAULT));
 						}	
 					}
 				}
@@ -235,7 +250,7 @@ function Enemy (positionX, positionY){
 	this.knockBackForce = 0;
 	this.pointValueDead = 200;
 	this.pointValueHit = 50;
-	this.impactWait = 20;
+	this.impactWait = 100; //default 100
 	
 	//for hitstop wait effect.
 	this.damageHold = 0;
@@ -264,6 +279,19 @@ function Enemy (positionX, positionY){
 			this.sprite.update();
 			if(this.hitPoints <= 0){
 				score += this.pointValueDead;
+				
+				//For everyone one that falls, two must take its place!
+				if(enemy.length < 100){
+					this.spawnEnemy();
+					this.spawnEnemy();
+				}
+				
+				if(keySpawned == false && this.sprite.x < world.xBound && this.sprite.y < world.yBound){	
+					if(Math.floor((Math.random() * 100) + 1) > 75){					
+						treasure.push(new Treasure(this.sprite.x, this.sprite.y, KEY));
+						keySpawned = true;
+					}			
+				}
 				this.dead = true;
 			}
 			scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
@@ -283,10 +311,38 @@ function Enemy (positionX, positionY){
 		}
 	}
 	
+	this.spawnEnemy = function(){
+		rightSpawn = this.sprite.scene.cWidth + 400;
+		leftSpawn = -400; 
+		topSpawn = -300;
+		bottomSpawn = this.sprite.scene.cHeight + 300;
+		keepGoing = true;
+		while(keepGoing == true){
+			for(i = 0; i < 4; i++){
+				if(Math.floor((Math.random() * 100) + 1) > 99){	
+					if(i == 0){
+						enemy.push(new Enemy(rightSpawn, 300));
+					}
+					else if(i == 1){
+						enemy.push(new Enemy(leftSpawn, 300));
+					}
+					else if(i == 2){
+						enemy.push(new Enemy(400, topSpawn));
+					}
+					else if(i == 3){
+						enemy.push(new Enemy(400, bottomSpawn));
+					}
+					keepGoing = false;
+				}
+			}
+		}
+	}
+	
 	this.invincibility = function(set){
 		if(set == true){
 			this.invincible = true;
 			iFrames = 30;
+			console.log("invincible");
 		}
 		iFrames--;
 		if(iFrames <= 0){
@@ -307,7 +363,7 @@ function Enemy (positionX, positionY){
 	this.damageBy = function(amount, waitBool){
 		if(this.invincible == false){	
 			if(waitBool == true){
-				this.setWait(100, amount);
+				this.setWait(this.impactWait, amount);
 			}
 			this.hitPoints -= amount;
 			if(this.aggro == false){		
@@ -371,8 +427,16 @@ function Enemy (positionX, positionY){
 	}
 }	
 
-function Treasure (x, y){
-	this.sprite = new Sprite(scene, "challice.png", 30, 30);
+function Treasure (x, y, type){
+	if(type == KEY){
+		this.sprite = new Sprite(scene, "key.png", 35, 35);
+		this.isKey = true;
+	}
+	else if(type == DEFAULT){
+		this.sprite = new Sprite(scene, "challice.png", 35, 35);
+		this.isKey = false;
+	}
+
 	this.sprite.setBoundAction(CONTINUE);
 	this.sprite.setPosition(x,y);
 	this.sprite.setMoveAngle(0);
@@ -383,6 +447,28 @@ function Treasure (x, y){
 	
 	this.update = function(){
 		this.sprite.update();
+	}
+}
+
+function Exit(x, y){
+	this.sprite = new Sprite(scene, "door.png", 50, 50);
+	this.sprite.setBoundAction(CONTINUE);
+	this.sprite.setPosition(x,y);
+	this.sprite.setMoveAngle(0);
+	this.sprite.setSpeed(0);
+	
+	this.update = function(){
+		this.sprite.update();
+	}
+	
+	this.activate = function(){
+		if(gotKey == true){
+			score += 1000 * game.levelCount;
+			setGameOver(false);
+		}
+		else{
+			console.log("Find key to exit.");
+		}
 	}
 }
 
@@ -408,6 +494,9 @@ function HUD(player, scene){
 function ScreenFilter(type, scene){
 	if(type == TREASURE){
 		this.sprite = new Sprite(scene, "treasureFilter.png", 800 , 600);
+	}
+	else if(type == KEY){
+		this.sprite = new Sprite(scene, "keyFilter.png", 800 , 600);
 	}
 	this.sprite.setBoundAction(CONTINUE);
 	this.sprite.setPosition(400,300);
@@ -457,6 +546,8 @@ function Waiter(){
   
 function init(){
 	gameOver = false;
+	keySpawned = false;
+	gotKey = false;
 	width = 20;
 	height = 20;
 	console.log("Creating new game...");
@@ -464,10 +555,12 @@ function init(){
 		scene = new Scene();
 		timer = new Timer();
 		game = new GameDirector();
+			//Filters
+		screenFilters.push(new ScreenFilter(TREASURE, scene));
+		screenFilters.push(new ScreenFilter(KEY, scene));
 	}
 	
-	scene.setBounds(width, height);
-	
+	scene.setBounds(width, height);	
 	
 	if(winner == false){
 		score = 0;
@@ -482,9 +575,6 @@ function init(){
 	
 	world = new World(width, height);
 	world.initialize();
-	
-	//Filters
-	screenFilters.push(new ScreenFilter(TREASURE, scene));
 	
 	bullet = [];
 	
@@ -622,6 +712,11 @@ function update(){
 			//World tiles go here
 			world.update();
 			
+			exit.update();
+			if(player.sprite.collidesWith(exit.sprite) == true){
+					exit.activate();
+				}
+			
 			player.update();
 			for(i = 0; i < enemy.length; i++){
 				if(enemy[i].dead == true){
@@ -633,7 +728,7 @@ function update(){
 				else{
 					enemy[i].update();
 					for(j = 0; j < enemy.length; j++){
-						if(enemy[j].waiting == false){	 //if enemy is in hitstop effect, it can't damage the player.
+						if(enemy[j].invincible == false){	 //if enemy is in hitstop effect, it can't damage the player.
 							if(player.sprite.collidesWith(enemy[j].sprite) == true){
 								player.damageBy(1);
 							}
@@ -672,8 +767,14 @@ function update(){
 				if(treasure[i].dead == false){
 					treasure[i].update()
 					if(player.sprite.collidesWith(treasure[i].sprite)){
-						screenFilters[0].activate();
-						score += treasure[i].pointValue;
+						if(treasure[i].isKey == true){
+							screenFilters[KEY].activate();
+							gotKey = true;
+						}
+						else{
+							screenFilters[TREASURE].activate();
+							score += treasure[i].pointValue;
+						}
 						treasure[i].dead = true;
 						treasure.splice(i, 1);
 					}
@@ -704,3 +805,6 @@ WIN = 0; LOSE = 1
 
 //Fullscreen filters
 TREASURE = 0;
+
+//Treasure type
+DEFAULT = 0; KEY = 1;
