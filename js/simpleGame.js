@@ -35,6 +35,7 @@ function Sprite(scene, imageFile, width, height){
   this.speed = 10;
   this.camera = false;
   this.visible = true;
+  this.noCam = false;
   this.boundAction = WRAP;
   
   this.changeImage = function(imgFile){
@@ -80,8 +81,13 @@ function Sprite(scene, imageFile, width, height){
       
       //transform element
 	  //Alex: transform sprite based on camera position.
-      ctx.translate(this.x - this.scene.camera.x, this.y - this.scene.camera.y);
-      ctx.rotate(this.imgAngle);
+	  if(this.noCam == false){
+		ctx.translate(this.x - this.scene.camera.x, this.y - this.scene.camera.y);			
+	  }
+	  else{
+		  ctx.translate(this.x, this.y);	
+	  }
+	  ctx.rotate(this.imgAngle);
       
       //draw image with center on origin
 	if( this.animation != false ){
@@ -119,10 +125,16 @@ function Sprite(scene, imageFile, width, height){
     camY = this.scene.camera.y;
 	//console.log(camX, camY);
     //if(this.camera){ camX = this.camera.cameraOffsetX; camY = this.camera.cameraOffsetY; }
-    rightBorder = this.cWidth + camX;
-    leftBorder = camX; 
-    topBorder = camY;
-    bottomBorder = this.cHeight + camY;
+    
+	//rightBorder = this.cWidth + camX;
+    //leftBorder = camX; 
+    //topBorder = camY;
+    //bottomBorder = this.cHeight + camY;
+	
+	rightBorder = this.scene.cWidth + 800;
+    leftBorder = -800; 
+    topBorder = -600;
+    bottomBorder = this.scene.cHeight + 600;
     
     offRight = false;
     offLeft = false;
@@ -141,7 +153,7 @@ function Sprite(scene, imageFile, width, height){
       offBottom = true;
     }
     
-    if (this.y < 0){
+    if (this.y < topBorder){
       offTop = true;
     }
 
@@ -459,7 +471,7 @@ function Sprite(scene, imageFile, width, height){
   } // end report
 } // end Sprite class def
 
-//Stripped down sprite class used for background tiling.
+//Stripped down sprite class used for background tiling. Alex
 function Tile(scene, imageFile, x, y){
 	    //core class for game engine
   this.scene = scene;
@@ -611,7 +623,7 @@ function Tile(scene, imageFile, x, y){
   } // end checkbounds
 }
 
-//Used for parenting to sprite.
+//Used for parenting to sprite. Alex
 function Camera(scene, parent, offsetX, offsetY){
 	this.offsetX = offsetX;
 	this.offsetY = offsetY;
@@ -623,6 +635,15 @@ function Camera(scene, parent, offsetX, offsetY){
 	this.update = function(){
 		this.x = parent.x - this.offsetX;
 		this.y = parent.y - this.offsetY;
+	}
+	
+	//floaty effect
+	this.floaty = function(){
+		
+	}
+	
+	this.shake = function(){
+		//shaaake
 	}
 }
 
@@ -660,6 +681,7 @@ function Scene(){
 	
 	//Alex Edit for text drawing
 	this.context.font = "30px Arial";
+	this.context.fillStyle = 'white';
 	this.textArray = [];
 	
     this.clear = function(){
@@ -688,10 +710,16 @@ function Scene(){
       }
     } 
 	
+	//Alex's weird bounds mod.
+	this.setBounds = function(width, height){
+		this.cWidth = width * 100;
+		this.cHeight = height * 100;
+	}
 	//Alex function using canvas to draw text.
 	this.drawText = function(){
 		for(i = 0; i < this.textArray.length; i++){
 			this.context.font = this.textArray[i].font;
+			this.context.fillStyle = 'white';
 			this.context.fillText(this.textArray[i].string, this.textArray[i].x, this.textArray[i].y);
 			//console.log(this.textArray[i].string);
 			if(this.textArray[i].type != GAMEOVER){
@@ -712,7 +740,9 @@ function Scene(){
 		else if(type == SCORE){
 			this.textArray.push(new Text(string, x, y,"25px Arial", type));
 		}
-		
+		else if(type == LEVEL){
+			this.textArray.push(new Text(string, x, y,"25px Arial", type));
+		}
 		//Will be cleared when scene is reset.
 		else if(type == GAMEOVER){
 			this.textArray.push(new Text(string, x, y,"40px Arial", type));			
@@ -775,8 +805,11 @@ function Scene(){
 
     } // end setPos
     
+	//Alex fixed this for hex colors
     this.setBG = function(color){
       this.canvas.style.backgroundColor = color;
+	  //this.canvas.style.backgroundColor = #330033;
+	  //this.canvas.fillStyle = color;
     } // end this.setBG
     
     this.updateMousePos = function(e){
@@ -816,7 +849,7 @@ function Scene(){
     
     this.setSize(800, 600);
     this.setPos(10, 10);
-    this.setBG("lightgray");
+    this.setBG('#1a001a');
     
 } // end Scene class def
 
@@ -1254,4 +1287,4 @@ PLAY_ONCE = 1; PLAY_LOOP = 2;
 WRAP = 0; BOUNCE = 1; STOP = 3; DIE = 4; CONTINUE = 5;
 
 //Text Position Constants
-DEFAULT = 0; GAMEOVER = 1; SCORE = 2;
+DEFAULT = 0; GAMEOVER = 1; SCORE = 2; LEVEL = 3;

@@ -6,14 +6,17 @@
 //simple game with a single moving ball
 var firstRun = true;
 var gameOver = false;
+var winner = false;
 
 var timer;
 var waiter;
-
+var game;
 var scene;
 var player;
 
-var pickup;
+var screenFilters = [];
+
+var treasure = [];
 
 var camera;
 var hud;
@@ -41,13 +44,73 @@ function AiController(player){
 	}
 }
 
+function GameDirector(){
+	this.levelCount = 0;
+	
+}
+
 function World(height, width){
 	this.tiles = [];
+	enemy = [];
+	this.yBound = height * 100;
+	this.xBound = width * 100;
+	this.playerPosX = 0;
+	this.playerPosY = 0;
 	
 	this.initialize = function(){
+		
+		player = new Player();
+		keepGoing = true;
+		while(keepGoing == true){			
+			for(i = 0; i <= height - 1; i++){
+				for(j = 0; j <= width - 1; j++){
+					if(Math.floor((Math.random() * 100) + 1) > 98){	
+						this.playerPosX = i*100;
+						this.playerPosY = j*100;
+						player.sprite.setPosition(this.playerPosX , this.playerPosY);
+						keepGoing = false;
+					}
+				}
+			}
+		}	
+		
 		for(i = 0; i <= height; i++){
 			for(j = 0; j <= width; j++){
-				this.tiles.push(new Tile(scene, "ground.png", i*100, j*100));
+				this.tiles.push(new Tile(scene, "dirt2.png", i*100, j*100));
+				//spawn enemies.
+				if(enemy.length <= 10 + game.levelCount){
+					if(Math.floor((Math.random() * 100) + 1) > 98 && i*100 != this.playerPosX && j*100 != this.playerPosY){
+						console.log("Enemies: " + enemy.length);
+						console.log("Location:" + i*100 +", " + j*100);
+						enemy.push(new Enemy(i*100, j*100));
+						enemy[enemy.length - 1].setAggro(false);
+					}
+				}
+			}
+		}
+		while(enemy.length <= 10 + game.levelCount){
+			for(i = 0; i <= height; i++){
+				for(j = 0; j <= width; j++){
+					if(enemy.length <= 10 + game.levelCount){
+						if(Math.floor((Math.random() * 100) + 1) > 98){	
+							console.log("Enemies: " + enemy.length);
+							console.log("Location:" + i*100 +", " + j*100);
+							enemy.push(new Enemy(i*100, j*100));
+						}	
+					}
+				}
+			}
+		}
+		
+		while(treasure.length <= 10 * game.levelCount){
+			for(i = 0; i <= height; i++){
+				for(j = 0; j <= width; j++){
+					if(treasure.length <= 10 * game.levelCount){
+						if(Math.floor((Math.random() * 100) + 1) > 98){	
+							treasure.push(new Treasure(i*100, j*100));
+						}	
+					}
+				}
 			}
 		}
 	}
@@ -87,23 +150,52 @@ function Orb(parent){
 	this.sprite.loadAnimation(204,46,34,34);
 	this.sprite.generateAnimationCycles();
 	this.sprite.setAnimationSpeed(500);
-	this.sprite.setBoundAction(DIE);
+	this.sprite.setBoundAction(CONTINUE);
 	//this.sprite.setMoveAngle(angle);
 	//this.sprite.setSpeed(velocity);		
 	
-	this.radius = 50;
+	this.x = 0;
+	this.y = 0;
+	this.radius = 100;
 	this.damage = 1;
 	this.dead = false;
 	this.sprite.setPosition(this.parent.x + this.radius, this.parent.y);
 	
+	//for hitstop wait effect.
+	this.damageHold = 0;
+	this.startWait = 0;
+	this.waitTime = 0;
+	this.waiting = false;
+	
+	//Wait for hitstop effect
+	this.setWait = function(time){
+		this.waiting = true;
+		this.waitTime = time;
+		this.startWait = timer.getCurrentTime();
+		//console.log("waiting...");
+	}
+	
 	this.update = function(){
-		//this.sprite.x = this.parent.x + this.radius;
-		//this.sprite.y = this.parent.y;
-		this.sprite.setPosition(this.parent.x + this.radius, this.parent.y);
+		this.orbit();
+		this.sprite.setPosition(this.x, this.y);
 		this.sprite.update();
 		if(this.sprite.visible == false){
 			this.dead = true;
 		}
+	}
+	
+	this.orbit = function(){
+		if(this.waiting == false){	
+			this.sprite.turnBy(2);
+		}
+		else{
+			if(timer.getCurrentTime() - this.startWait >= this.waitTime){
+				this.waiting = false;
+				//console.log("done waiting.");
+			}
+		}
+		this.x = this.parent.x + (this.radius * Math.cos(this.sprite.moveAngle));
+		this.y = this.parent.y + (this.radius * Math.sin(this.sprite.moveAngle));
 	}
 }
 
@@ -118,6 +210,8 @@ function Player (){
 	this.sprite.setSpeed(0);
 	
 	this.hitPoints = 1;
+	
+	this.hasKey = false;
 	
 	this.update = function(){
 		this.sprite.update();
@@ -183,6 +277,10 @@ function Enemy (positionX, positionY){
 				//console.log("done waiting.");
 			}
 		}
+		if(this.sprite.visible == false){
+			this.dead = true;
+			console.log("Dead");
+		}
 	}
 	
 	this.invincibility = function(set){
@@ -223,6 +321,12 @@ function Enemy (positionX, positionY){
 			score += this.pointValueHit;
 		
 			this.knockBack(20);
+			
+			//RUN AWAY!!!
+			if(this.hitPoints == 1){
+				this.speed = 1;
+				this.sprite.setBoundAction(DIE);
+			}
 		}
 	}
 	
@@ -267,10 +371,10 @@ function Enemy (positionX, positionY){
 	}
 }	
 
-function Pickup (){
+function Treasure (x, y){
 	this.sprite = new Sprite(scene, "challice.png", 30, 30);
 	this.sprite.setBoundAction(CONTINUE);
-	this.sprite.setPosition(500,10);
+	this.sprite.setPosition(x,y);
 	this.sprite.setMoveAngle(0);
 	this.sprite.setSpeed(0);
 	
@@ -296,8 +400,38 @@ function HUD(player, scene){
 	this.player = player;
 	
 	this.update = function(){
-		//scene.sSetText(this.player.hitPoints, DEFAULT, 10, 30);
+		scene.sSetText("Level: " + game.levelCount, 700, 30, LEVEL);
 		scene.sSetText("SCORE: " + score, 100, 30, SCORE);
+	}
+}
+
+function ScreenFilter(type, scene){
+	if(type == TREASURE){
+		this.sprite = new Sprite(scene, "treasureFilter.png", 800 , 600);
+	}
+	this.sprite.setBoundAction(CONTINUE);
+	this.sprite.setPosition(400,300);
+	this.sprite.setMoveAngle(0);
+	this.sprite.setSpeed(0);
+	this.sprite.noCam = true;
+	
+	this.startWait = 0;
+	this.waitTime = 50;
+	this.waiting = false;
+	
+	this.update = function(){
+		if(this.waiting == true){
+			if(timer.getCurrentTime() - this.startWait >= this.waitTime){
+				this.waiting = false;
+			}
+			this.sprite.update();
+		}
+		//this.sprite.update();
+	}
+	
+	this.activate = function(){
+		this.waiting = true;
+		this.startWait = timer.getCurrentTime();
 	}
 }
 
@@ -323,29 +457,38 @@ function Waiter(){
   
 function init(){
 	gameOver = false;
-	score = 0;
+	width = 20;
+	height = 20;
 	console.log("Creating new game...");
 	if(firstRun == true){
 		scene = new Scene();
 		timer = new Timer();
+		game = new GameDirector();
 	}
 	
+	scene.setBounds(width, height);
+	
+	
+	if(winner == false){
+		score = 0;
+		game.levelCount = 0;
+	}
+	
+	game.levelCount++;
 	timer.reset();
 	scene.clearText();
 	
 	waiter = new Waiter();
-	player = new Player();
 	
-	world = new World(20, 20);
+	world = new World(width, height);
 	world.initialize();
 	
+	//Filters
+	screenFilters.push(new ScreenFilter(TREASURE, scene));
+	
 	bullet = [];
-	enemy = [];
-	enemy.push(new Enemy(400, 500));
-	enemy.push(new Enemy(100, 200));
-	enemy[1].setAggro(false);
-
-	pickup = new Pickup();
+	
+	//pickup = new Pickup();
 	
 	orb = new Orb(player.sprite);
 	
@@ -373,30 +516,33 @@ function setGameOver(condition){
 	gameOver = true;
 	waiter.setWait(2000); // wait for 2 seconds.
 	if(condition == WIN){
+		winner = true;
 		scene.sSetText("You Win!", 100, 300, GAMEOVER);
+		scene.sSetText("Press Any Key To Continue", 100, 400, GAMEOVER);		
 	}
 	else if(condition == LOSE){
-		scene.sSetText("You Lose", 100, 300, GAMEOVER);
-	}
-	
-	scene.sSetText("Press Fire To Restart", 100, 400, GAMEOVER);
-	
-	if(score > highScore){
-		highScore = score;
-		scene.sSetText("New High Score!", 100, 500, GAMEOVER);
-	}
-	else{
-		scene.sSetText("High Score: " + highScore, 100, 500, GAMEOVER);
+		winner = false;
+		scene.sSetText("Game Over", 100, 300, GAMEOVER);		
+		scene.sSetText("Press Any Key To Restart", 100, 400, GAMEOVER);	
+		if(score > highScore){
+			highScore = score;
+			scene.sSetText("New High Score!", 100, 500, GAMEOVER);
+		}
+		else{
+			scene.sSetText("High Score: " + highScore, 100, 500, GAMEOVER);
+		}
 	}
 }
 
 function fire(){
 	if(gameOver == false){
+		/*
 		if(currentBullets < maxBullets){		
 			bullet.push(new Bullet(player.sprite.x, player.sprite.y, player.sprite.getMoveAngle(), bulletSpeed, true));
 			//console.log(bullet); //debug
 			currentBullets++;
 		}
+		*/
 	}
 	else{
 		reset();
@@ -413,6 +559,7 @@ function input(){
 		fired = false;
 	}
 	
+	/*
 	//Left and Right keys for rotating
 	if(keysDown[K_LEFT] == true){
 		player.sprite.turnBy(rotateSpeed * -1);
@@ -420,6 +567,7 @@ function input(){
 	if(keysDown[K_RIGHT] == true){
 		player.sprite.turnBy(rotateSpeed);
 	}
+	*/
 	
 	/*
 	//Move FreeCam with WASD
@@ -454,10 +602,10 @@ function input(){
 		player.sprite.x = player.sprite.x + playerSpeed;
 	}
 	
-	if(player.sprite.x <= 0){
+	if(player.sprite.x <= 0 || player.sprite.x >= world.xBound){
 		player.sprite.x = this.oldPlayerX;
 	}
-	if(player.sprite.y <= 0){
+	if(player.sprite.y <= 0 || player.sprite.y >= world.yBound){
 		player.sprite.y = this.oldPlayerY;
 	}
 }
@@ -494,6 +642,14 @@ function update(){
 				}
 			}
 			orb.update();
+				for(i = 0; i < enemy.length; i++){
+					if(orb.waiting == false){
+						if(orb.sprite.collidesWith(enemy[i].sprite) == true){
+							enemy[i].damageBy(orb.damage, true);
+							orb.setWait(100)
+						}
+					}
+				}
 			for(i = 0; i < bullet.length; i++){
 				//remove from array if it has "died".
 				if(bullet[i].dead == true){
@@ -511,14 +667,23 @@ function update(){
 					}
 				}
 			}
-			if(pickup.dead == false){
-				pickup.update()
-				if(player.sprite.collidesWith(pickup.sprite)){
-					score += pickup.pointValue;
-					pickup.dead = true;
+			for(i = 0; i < treasure.length; i++)
+			{
+				if(treasure[i].dead == false){
+					treasure[i].update()
+					if(player.sprite.collidesWith(treasure[i].sprite)){
+						screenFilters[0].activate();
+						score += treasure[i].pointValue;
+						treasure[i].dead = true;
+						treasure.splice(i, 1);
+					}
 				}
 			}
-
+			
+			for(i = 0; i < screenFilters.length; i++){
+				screenFilters[i].update();
+			}
+			
 			if(player.hitPoints <= 0){
 				setGameOver(LOSE);
 			}
@@ -534,4 +699,8 @@ function update(){
 	}
 } // end update
 
+//Game over states
 WIN = 0; LOSE = 1
+
+//Fullscreen filters
+TREASURE = 0;
