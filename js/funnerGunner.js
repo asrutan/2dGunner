@@ -62,6 +62,8 @@ function GameDirector(){
 	
 }
 
+//Defines the size of the world and our grid of sprite tiles to represent the background.
+//Spawns the player, enemies, treasure, and exit in a different spot every time.
 function World(height, width){
 	this.tiles = [];
 	enemy = [];
@@ -72,6 +74,7 @@ function World(height, width){
 	
 	this.initialize = function(){
 		
+		//Drop the player in a random spot
 		player = new Player();
 		keepGoing = true;
 		while(keepGoing == true){			
@@ -87,6 +90,7 @@ function World(height, width){
 			}
 		}	
 		
+		//Spawn the exit in the same way as the player.
 		keepGoing = true;
 		while(keepGoing == true){			
 			for(i = 0; i <= height - 1; i++){
@@ -99,6 +103,10 @@ function World(height, width){
 			}
 		}				
 		
+		//Create the floor grid and spawn the first round of enemies.
+		//The enemies that are created here will start off not hostile to the player.
+		//That means that each level feels different because different amounts of enemies will rush the player each time.
+		//Sometimes they all rush, sometimes none of them do.
 		for(i = 0; i <= height; i++){
 			for(j = 0; j <= width; j++){
 				this.tiles.push(new Tile(scene, "dirt2.png", i*100, j*100));
@@ -113,6 +121,8 @@ function World(height, width){
 				}
 			}
 		}
+		//Any enemies that aren't spawned in the first round are spawned here, and they are
+		//hostile to the player by default.
 		while(enemy.length <= 10 + game.levelCount){
 			for(i = 0; i <= height; i++){
 				for(j = 0; j <= width; j++){
@@ -127,6 +137,7 @@ function World(height, width){
 			}
 		}
 		
+		//Spawn lots of treasure. More opportunity to gain points the more levels you play.
 		while(treasure.length <= 10 * game.levelCount){
 			for(i = 0; i <= height; i++){
 				for(j = 0; j <= width; j++){
@@ -140,6 +151,7 @@ function World(height, width){
 		}
 	}
 	
+	//Called in the main update to show the floor tiles each frame.
 	this.update = function(){
 		for(i = 0; i < this.tiles.length; i++){
 			this.tiles[i].update();
@@ -148,6 +160,7 @@ function World(height, width){
 }
 
 //Unused. Replaced with orb, which is more fun.
+//Originally used to test collision and other game features
 function Bullet(positionX, positionY, angle, velocity, friendly){
 	this.sprite = new Sprite(scene,"orb.png",20,20)
 	this.sprite.loadAnimation(204,46,34,34);
@@ -169,7 +182,11 @@ function Bullet(positionX, positionY, angle, velocity, friendly){
 	}
 }
 
+//Heart and soul of the game.
+//The orb harms enemies and knocks them back.
+//Orbits the player.
 function Orb(parent){
+	//Uses the only animation in the game at the moment.
 	this.parent = parent;
 	this.sprite = new Sprite(scene,"orb.png",20,20)
 	this.sprite.loadAnimation(204,46,34,34);
@@ -209,6 +226,7 @@ function Orb(parent){
 		}
 	}
 	
+	//If the orbit is not waiting, orbit the player.
 	this.orbit = function(){
 		if(this.waiting == false){	
 			this.sprite.turnBy(2);
@@ -219,11 +237,16 @@ function Orb(parent){
 				//console.log("done waiting.");
 			}
 		}
+		//Follow the parent, always the player but theoretically any other sprite can have their
+		//own orb. Take the parent position and do some maths.
 		this.x = this.parent.x + (this.radius * Math.cos(this.sprite.moveAngle));
 		this.y = this.parent.y + (this.radius * Math.sin(this.sprite.moveAngle));
 	}
 }
 
+//Player and his sprite.
+//Can be damaged and can either have the key or not have the key.
+//Hitpoints set to 1 for that classic arcade punishment.
 function Player (){
 	this.x = scene.width/2;
 	this.y = scene.height/2;
@@ -247,9 +270,13 @@ function Player (){
 	}
 }
 
+//Enemy class can chase, run away, be set to hostile or passive, spawn other enemies, 
+//and be damaged. 
 function Enemy (positionX, positionY){
 	this.hitPoints = 5;
 	this.damageAggroThreshold = 1;
+	//If speed is positive, it runs from the player
+	//If negative, it moves toward the player.
 	this.speed = -1;
 	this.speedModifier = 0;
 	this.dead = false;
@@ -273,10 +300,13 @@ function Enemy (positionX, positionY){
 	this.sprite.setPosition(positionX,positionY); //put player in middle of screen
     this.sprite.setMoveAngle(180);
 	this.sprite.setSpeed(0);
+	
+	//Enemies will not do anything if not aggro'd
 	if(this.aggro == true){
 		this.sprite.setSpeed(this.speed);
 	}
 	
+	//lots of stuff
 	this.update = function(){
 		if(this.waiting == false){	
 			if(this.knockedBack == true){
@@ -288,6 +318,10 @@ function Enemy (positionX, positionY){
 			}
 			this.sprite.update();
 			if(this.hitPoints <= 0){
+				//Die, when it is set to dead, our main update loop will remove it from the enemies array
+				//So that it no longer is drawn or updated.
+				
+				//Increment user's score.
 				score += this.pointValueDead;
 				
 				//For everyone one that falls, two must take its place!
@@ -296,6 +330,8 @@ function Enemy (positionX, positionY){
 					this.spawnEnemy();
 				}
 				
+				//If we haven't spawned a key yet, and spawning a key on this enemy wouldn't be a place where the 
+				//player can't reach, then chance to drop this level's key.
 				if(keySpawned == false && this.sprite.x < world.xBound && this.sprite.y < world.yBound){	
 					if(Math.floor((Math.random() * 100) + 1) > 75){					
 						treasure.push(new Treasure(this.sprite.x, this.sprite.y, KEY));
@@ -304,6 +340,8 @@ function Enemy (positionX, positionY){
 				}
 				this.dead = true;
 			}
+			
+			//Change hitpoint value painted on them.
 			scene.sSetText(this.hitPoints, this.sprite.x - scene.camera.x, this.sprite.y - scene.camera.y, DEFAULT);
 		}
 		else{
@@ -322,6 +360,8 @@ function Enemy (positionX, positionY){
 		}
 	}
 	
+	//Spawn new aggro'd enemies off in the distance. 
+	//Instead of using a timer, this puts pressure on the player the longer they play.
 	this.spawnEnemy = function(){
 		rightSpawn = this.sprite.scene.cWidth + 400;
 		leftSpawn = -400; 
@@ -349,6 +389,9 @@ function Enemy (positionX, positionY){
 		}
 	}
 	
+	//Since the enemy is held by the hitstop effect (for great feedback), make it so by
+	//continuing to be in contact with the orb they do not take damage.
+	//Invicible for 30 frames every time they are hit.
 	this.invincibility = function(set){
 		if(set == true){
 			this.invincible = true;
@@ -362,6 +405,8 @@ function Enemy (positionX, positionY){
 	}
 	
 	//Wait, then damage after waiting
+	//This is the heart of the great feedback every time the player damages the ball.
+	//Change the sprite and set the current time, so we know when time is up in update().
 	this.setWait = function(time, damage){
 		this.sprite.setImage("redBallyellow.png");
 		this.damageHold = damage;
@@ -398,12 +443,14 @@ function Enemy (positionX, positionY){
 		}
 	}
 	
+	//knock the enemy back away from where it is currently facing (always the player).
 	this.knockBack = function(force){
 		this.knockedBack = true;
 		this.knockedBackXenith = false;
 		this.knockBackForce = force;
 	}
 	
+	//Knock back, when it has traveled far enough back, stop knocking.
 	this.performKnockBack = function(){
 		if(this.knockedBack == true && this.knockedBackXenith == false){
 			this.speedModifier += this.knockBackForce / 2;	
@@ -411,6 +458,8 @@ function Enemy (positionX, positionY){
 					this.knockedBackXenith = true;
 				}
 			}
+		//slow down after we've been knocked back a certain amount.
+		//Gives the impression of taking a big hit.
 		else if(this.knockedBack == true){
 			this.speedModifier--;
 			if(this.speedModifier <= 0){
@@ -421,6 +470,7 @@ function Enemy (positionX, positionY){
 			}
 		}
 	
+	//whether or not to chase the player.
 	this.setAggro = function(bool){
 		this.aggro = bool;
 		if(this.aggro == false){
@@ -432,6 +482,9 @@ function Enemy (positionX, positionY){
 		}
 	}
 	
+	//Called by the AI controller to tell the enemy what to do.
+	//Is sent the player so we can get its properties. In this case, angle.
+	//Ensures we are always facing the player.
 	this.chase = function(player){
 		if(this.waiting == false){
 			this.sprite.setAngle(this.sprite.angleTo(player.sprite));
@@ -439,6 +492,9 @@ function Enemy (positionX, positionY){
 	}
 }	
 
+//Key is a type of treasure, when it is hit, we can go through the exit.
+//Challices are just for points. When collected, they give a screen filter feedback.
+//Key gives a blue one rather than a gold one.
 function Treasure (x, y, type){
 	if(type == KEY){
 		this.sprite = new Sprite(scene, "key.png", 35, 35);
@@ -463,6 +519,8 @@ function Treasure (x, y, type){
 	}
 }
 
+//Ends the level and rewards points to the user if they have the key.
+//If not, tell them they need to find the key.
 function Exit(x, y){
 	this.sprite = new Sprite(scene, "door.png", 50, 50);
 	this.sprite.setBoundAction(CONTINUE);
@@ -486,6 +544,8 @@ function Exit(x, y){
 	}
 }
 
+//Used for debugging early. Can move it around the environment freely rather than
+//Having it paired to a parent.
 function FreeCamera(){
 	this.x = 0;
 	this.y = 0;
@@ -495,6 +555,7 @@ function FreeCamera(){
 	}
 }
 
+//Calls my setText method added to simplegame that displays the current level and player's score.
 function HUD(player, scene){
 	this.scene = scene;
 	this.player = player;
@@ -505,10 +566,13 @@ function HUD(player, scene){
 	}
 }
 
+//Play a sound using simplegame
 function playSound(sound){
 	sounds[sound].play();
 }
 
+//Used to flash the screen a certain color when an event happens.
+//Currently only used when picking up treasure or the key.
 function ScreenFilter(type, scene){
 	if(type == TREASURE){
 		this.sprite = new Sprite(scene, "treasureFilter.png", 800 , 600);
@@ -526,6 +590,8 @@ function ScreenFilter(type, scene){
 	this.waitTime = 50;
 	this.waiting = false;
 	
+	//Only flash for a moment. Defined by waittime.
+	//When we are not flashing, do not update.
 	this.update = function(){
 		if(this.waiting == true){
 			if(timer.getCurrentTime() - this.startWait >= this.waitTime){
@@ -536,12 +602,19 @@ function ScreenFilter(type, scene){
 		//this.sprite.update();
 	}
 	
+	//Start the flash with the current time.
 	this.activate = function(){
 		this.waiting = true;
 		this.startWait = timer.getCurrentTime();
 	}
 }
 
+//Conceived as a way to pause the game. 
+//This "waiting" methodology was applied to many other game elements,
+//But they all have their own special waiting function.
+//This just makes the game freeze when the sound effects at the end of a session play.
+//Originally added because playtesters were smashing the space bar to shoot as they died
+//and skipping the end game score screen on accident.
 function Waiter(){
 	this.startWait = 0;
 	this.waitTime = 0;
@@ -562,6 +635,7 @@ function Waiter(){
 	}
 }
   
+ //Initialize the game. Set up things on first run, carry them over if not the first run.
 function init(){
 	gameOver = false;
 	keySpawned = false;
@@ -622,11 +696,14 @@ function init(){
 	//testSound = new Sound("")
 } // end init
 
+//Call the init method but it will not reload the canvas or anything, just reset game elements.
 function reset(){
 	firstRun = false;
 	init();
 }
 
+//Play a sound and make the game wait. Tally points, if it is a new high score, let them know.
+//If not, tell them the high score.
 function setGameOver(condition){
 	gameOver = true;
 	if(condition == WIN)
@@ -640,12 +717,12 @@ function setGameOver(condition){
 	if(condition == WIN){
 		winner = true;
 		scene.sSetText("You Win!", 100, 300, GAMEOVER);
-		scene.sSetText("Press Any Key To Continue", 100, 400, GAMEOVER);		
+		scene.sSetText("Press Space Bar To Continue", 100, 400, GAMEOVER);		
 	}
 	else if(condition == LOSE){
 		winner = false;
 		scene.sSetText("Game Over", 100, 300, GAMEOVER);		
-		scene.sSetText("Press Any Key To Restart", 100, 400, GAMEOVER);	
+		scene.sSetText("Press Space Bar To Restart", 100, 400, GAMEOVER);	
 		if(score > highScore){
 			highScore = score;
 			scene.sSetText("New High Score!", 100, 500, GAMEOVER);
@@ -656,6 +733,8 @@ function setGameOver(condition){
 	}
 }
 
+//Was used for firing bullets earlier in development.
+//Still used during the intermission screen.
 function fire(){
 	if(gameOver == false){
 		/*
@@ -707,6 +786,10 @@ function input(){
 	}
 	*/
 	
+	
+	//Save player's current valid coords each frame.
+	//If the player's new coords are not in bounds, set them back.
+	//this is all done without drawing first so it doesn't look jittery.
 	this.oldPlayerX = player.sprite.x;
 	this.oldPlayerY = player.sprite.y;
 	
@@ -732,23 +815,30 @@ function input(){
 	}
 }
 
-	
+//Called every frame to update everything in the game.
 function update(){
+	//If the game is not paused/waiting for dramatic effect...
 	if(waiter.waiting == false){
+		//Get input first.
 		input();
+		//Get what I consider to be the AI's input.
 		aiController.update();
+		//Clear the screen
 		scene.clear();
 		if(gameOver == false){	
+			//update camera position relative to player.
 			camera.update();
 			
 			//World tiles go here
 			world.update();
 			
+			//Draw the door, exit if they have the key.
 			exit.update();
 			if(player.sprite.collidesWith(exit.sprite) == true){
 					exit.activate();
 				}
 			
+			//If we've managed to kill all the enemies, end the game.
 			player.update();
 			for(i = 0; i < enemy.length; i++){
 				if(enemy[i].dead == true){
@@ -768,6 +858,9 @@ function update(){
 					}
 				}
 			}
+			//Update the orb, play the hit sound if it hits something.
+			//Set it's wait for our nice hitstop feedback.
+			//Perform the camera shake for even better feedback!
 			orb.update();
 				for(i = 0; i < enemy.length; i++){
 					if(orb.waiting == false){
@@ -779,6 +872,7 @@ function update(){
 						}
 					}
 				}
+			//Update array of bullets.
 			for(i = 0; i < bullet.length; i++){
 				//remove from array if it has "died".
 				if(bullet[i].dead == true){
@@ -795,6 +889,7 @@ function update(){
 					}
 				}
 			}
+			//Pick up treasure, if the treasure is the key, we have the key.
 			for(i = 0; i < treasure.length; i++)
 			{
 				if(treasure[i].dead == false){
@@ -815,10 +910,12 @@ function update(){
 				}
 			}
 			
+			//If the screen filters are active, flash the screen a color.
 			for(i = 0; i < screenFilters.length; i++){
 				screenFilters[i].update();
 			}
 			
+			//End the game if the player died.
 			if(player.hitPoints <= 0){
 				setGameOver(LOSE);
 			}

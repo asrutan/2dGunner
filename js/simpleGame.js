@@ -116,11 +116,13 @@ function Sprite(scene, imageFile, width, height){
     this.boundAction = action;
   } // end setBoundAction
   
+  //Changed this so that enemies that escaped while running away would be killed.
+  //this is not dependent on the camera but rather the actual world size and coordinates.
   this.checkBounds = function(){
     //behavior changes based on
     //boundAction property
 
-	//This only works if player's coordinates are positive. Alex
+	//This only works if player's coordinates are positive. Alex edit.
     camX = this.scene.camera.x;
     camY = this.scene.camera.y;
 	//console.log(camX, camY);
@@ -624,6 +626,7 @@ function Tile(scene, imageFile, x, y){
 }
 
 //Used for parenting to sprite. Alex
+//Has a shake function for the great damage feedback.
 function Camera(scene, parent, offsetX, offsetY){
 	this.offsetX = offsetX;
 	this.offsetY = offsetY;
@@ -675,11 +678,13 @@ function Camera(scene, parent, offsetX, offsetY){
 		}
 	}
 	
-	//floaty effect
+	//floaty effect to feel faster and more dynamic
 	this.floaty = function(){
 		
 	}
 	
+	//Feels way more shakey that you'd think given a small shift.
+	//Feels great. works much the same as a wait except we are changing position over time.
 	this.shake = function(){
 		if(this.shaking == false){
 			this.shaking = true;
@@ -702,6 +707,7 @@ function FreeCamera(scene, parent){
 	}
 }
 
+//Text class for messages that are printed to the screen.
 function Text(string, x, y, font, type){
 	this.string = string;
 	this.x = x;
@@ -762,6 +768,7 @@ function Scene(timer){
 		this.cHeight = height * 100;
 	}
 	//Alex function using canvas to draw text.
+	//Set fills between calls to change the color.
 	this.drawText = function(){
 		for(i = 0; i < this.textArray.length; i++){
 			this.context.font = this.textArray[i].font;
@@ -778,6 +785,8 @@ function Scene(timer){
 		this.textArray = [];
 	}
 	
+	//Called within funnerGunner to write information on the screen.
+	//The array is iterated through to print on the canvas.
 	this.sSetText = function(string, x, y, type){
 		//Remove whatever other "default" type text is in the array first.
 		if(type == DEFAULT){
@@ -854,7 +863,6 @@ function Scene(timer){
 
     } // end setPos
     
-	//Alex fixed this for hex colors
     this.setBG = function(color){
       this.canvas.style.backgroundColor = color;
 	  //this.canvas.style.backgroundColor = #330033;
