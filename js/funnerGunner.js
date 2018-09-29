@@ -3,7 +3,11 @@
 // Alexander Rutan
 //
 
-//simple game with a single moving ball
+//A game about running around with an orb smashing red balls.
+//Red balls will eventually drop the key to move to the next level.
+//Try to get a high score!
+
+//Global variables
 var firstRun = true;
 var gameOver = false;
 var winner = false;
@@ -18,6 +22,7 @@ var player;
 var exit;
 
 var screenFilters = [];
+var sounds = [];
 
 var treasure = [];
 
@@ -35,9 +40,13 @@ var rotateSpeed = 1;
 var playerSpeed = 3;
 var bulletSpeed = 5;
 
+//Tells enemies what to do.
+//Takes the target so we can use that information
+//when telling AI what to do.
 function AiController(player){
 	this.target = player;
 	
+	//If the enemies are angry, chase the player.
 	this.update = function(){
 		for(i = 0; i < enemy.length; i++){
 			if(enemy[i].aggro == true){
@@ -47,6 +56,7 @@ function AiController(player){
 	}
 }
 
+//Keep track of levels only at the moment.
 function GameDirector(){
 	this.levelCount = 0;
 	
@@ -300,6 +310,7 @@ function Enemy (positionX, positionY){
 			this.sprite.setSpeed(0);
 			this.sprite.update();
 			if(timer.getCurrentTime() - this.startWait >= this.waitTime){
+				this.sprite.setImage("redBall.png");
 				this.waiting = false;
 				this.damageBy(this.damageHold, false);
 				//console.log("done waiting.");
@@ -342,7 +353,7 @@ function Enemy (positionX, positionY){
 		if(set == true){
 			this.invincible = true;
 			iFrames = 30;
-			console.log("invincible");
+			//console.log("invincible");
 		}
 		iFrames--;
 		if(iFrames <= 0){
@@ -352,6 +363,7 @@ function Enemy (positionX, positionY){
 	
 	//Wait, then damage after waiting
 	this.setWait = function(time, damage){
+		this.sprite.setImage("redBallyellow.png");
 		this.damageHold = damage;
 		this.waiting = true;
 		this.waitTime = time;
@@ -431,6 +443,7 @@ function Treasure (x, y, type){
 	if(type == KEY){
 		this.sprite = new Sprite(scene, "key.png", 35, 35);
 		this.isKey = true;
+		//scene.sSetText("KEY FOUND", 300, 200, ALERT);
 	}
 	else if(type == DEFAULT){
 		this.sprite = new Sprite(scene, "challice.png", 35, 35);
@@ -468,6 +481,7 @@ function Exit(x, y){
 		}
 		else{
 			console.log("Find key to exit.");
+			scene.sSetText("NEED KEY", 350, 200, ALERT);
 		}
 	}
 }
@@ -489,6 +503,10 @@ function HUD(player, scene){
 		scene.sSetText("Level: " + game.levelCount, 700, 30, LEVEL);
 		scene.sSetText("SCORE: " + score, 100, 30, SCORE);
 	}
+}
+
+function playSound(sound){
+	sounds[sound].play();
 }
 
 function ScreenFilter(type, scene){
@@ -533,13 +551,13 @@ function Waiter(){
 		this.waiting = true;
 		this.waitTime = time;
 		this.startWait = timer.getCurrentTime();
-		console.log("waiting...");
+		//console.log("waiting...");
 	}
 	
 	this.update = function(){
 		if(timer.getCurrentTime() - this.startWait >= this.waitTime){
 			this.waiting = false;
-			console.log("done waiting.");
+			//console.log("done waiting.");
 		}
 	}
 }
@@ -552,12 +570,18 @@ function init(){
 	height = 20;
 	console.log("Creating new game...");
 	if(firstRun == true){
-		scene = new Scene();
 		timer = new Timer();
+		scene = new Scene(timer);
 		game = new GameDirector();
 			//Filters
 		screenFilters.push(new ScreenFilter(TREASURE, scene));
 		screenFilters.push(new ScreenFilter(KEY, scene));
+		
+		//Set up audio.
+		sounds.push(new Sound("audio/treasure.mp3")); //slot 0;
+		sounds.push(new Sound("audio/hit.mp3")); //slot 1
+		sounds.push(new Sound("audio/win.mp3")); //slot 2
+		sounds.push(new Sound("audio/lose.mp3")); //slot 3
 	}
 	
 	scene.setBounds(width, height);	
@@ -595,6 +619,7 @@ function init(){
 		scene.start();
 	}
 
+	//testSound = new Sound("")
 } // end init
 
 function reset(){
@@ -604,6 +629,13 @@ function reset(){
 
 function setGameOver(condition){
 	gameOver = true;
+	if(condition == WIN)
+	{
+		playSound(CLEARED);
+	}
+	else{
+		playSound(LOSE);
+	}
 	waiter.setWait(2000); // wait for 2 seconds.
 	if(condition == WIN){
 		winner = true;
@@ -740,8 +772,10 @@ function update(){
 				for(i = 0; i < enemy.length; i++){
 					if(orb.waiting == false){
 						if(orb.sprite.collidesWith(enemy[i].sprite) == true){
+							playSound(HIT);
 							enemy[i].damageBy(orb.damage, true);
 							orb.setWait(100)
+							scene.camera.shake(timer.getCurrentTime());
 						}
 					}
 				}
@@ -754,7 +788,6 @@ function update(){
 				else{
 					bullet[i].update();
 					for(j = 0; j < enemy.length; j++){
-						console.log(i);
 						if(bullet[i].sprite.collidesWith(enemy[j].sprite) == true){
 							bullet[i].dead = true;
 							enemy[j].damageBy(bullet[i].damage, true);
@@ -767,6 +800,7 @@ function update(){
 				if(treasure[i].dead == false){
 					treasure[i].update()
 					if(player.sprite.collidesWith(treasure[i].sprite)){
+						playSound(TREASURE);
 						if(treasure[i].isKey == true){
 							screenFilters[KEY].activate();
 							gotKey = true;
@@ -808,3 +842,6 @@ TREASURE = 0;
 
 //Treasure type
 DEFAULT = 0; KEY = 1;
+
+//Sounds
+TREASURE = 0; HIT = 1; CLEARED = 2; LOSE = 3;

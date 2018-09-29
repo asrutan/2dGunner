@@ -630,11 +630,49 @@ function Camera(scene, parent, offsetX, offsetY){
 	this.x = parent.x;
 	this.y = parent.y;
 	
+	this.timer = scene.timer;
+	
+	this.shakeOffsetX = 5;
+	this.shakeOffsetY = 5;
+	this.startShake = 0;
+	this.shakeTime = 50;
+	this.shaking = false;
+	
 	scene.setCamera(this);
+	
+	this.defOffsetX = this.offsetX;
+	this.defOffsetY = this.offsetY;
 	
 	this.update = function(){
 		this.x = parent.x - this.offsetX;
 		this.y = parent.y - this.offsetY;
+		
+		if(this.shaking == true){
+			this.shake();
+			if(scene.timer.getCurrentTime() - this.startShake >= this.shakeTime){			
+				this.shaking = false;
+				//console.log("done waiting.");
+			}
+		}
+		else{
+			if(this.offsetX != this.defOffsetX){
+				if(this.offsetX > this.defOffsetX){
+					this.offsetX--;
+				}
+				else{
+					this.offsetX++;
+				}
+			}
+				
+			if(this.offsetY != this.defOffsetY){
+				if(this.offsetY > this.defOffsetY){
+					this.offsetY--;
+				}
+				else{
+					this.offsetY++;
+				}
+			}
+		}
 	}
 	
 	//floaty effect
@@ -643,7 +681,12 @@ function Camera(scene, parent, offsetX, offsetY){
 	}
 	
 	this.shake = function(){
-		//shaaake
+		if(this.shaking == false){
+			this.shaking = true;
+			this.startShake = scene.timer.getCurrentTime();
+		}
+		this.offsetX = this.defOffsetX + this.shakeOffsetX;
+		this.offsetY = this.defOffsetY + this.shakeOffsetY;
 	}
 }
 
@@ -667,7 +710,7 @@ function Text(string, x, y, font, type){
 	this.type = type;
 }
 
-function Scene(){
+function Scene(timer){
     //Scene that encapsulates the animation background
 
     //determine if it's a touchscreen device
@@ -710,6 +753,9 @@ function Scene(){
       }
     } 
 	
+	//Alex's timer thing. Bad
+	this.timer = timer;
+	
 	//Alex's weird bounds mod.
 	this.setBounds = function(width, height){
 		this.cWidth = width * 100;
@@ -741,6 +787,9 @@ function Scene(){
 			this.textArray.push(new Text(string, x, y,"25px Arial", type));
 		}
 		else if(type == LEVEL){
+			this.textArray.push(new Text(string, x, y,"25px Arial", type));
+		}
+		else if(type == ALERT){
 			this.textArray.push(new Text(string, x, y,"25px Arial", type));
 		}
 		//Will be cleared when scene is reset.
@@ -1287,4 +1336,4 @@ PLAY_ONCE = 1; PLAY_LOOP = 2;
 WRAP = 0; BOUNCE = 1; STOP = 3; DIE = 4; CONTINUE = 5;
 
 //Text Position Constants
-DEFAULT = 0; GAMEOVER = 1; SCORE = 2; LEVEL = 3;
+DEFAULT = 0; GAMEOVER = 1; SCORE = 2; LEVEL = 3; ALERT = 4;
